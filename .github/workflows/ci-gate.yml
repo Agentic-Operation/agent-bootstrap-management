@@ -12,4 +12,27 @@ jobs:
         with: {python-version: '3.12'}
       - run: pip install jsonschema pyyaml pytest
       - run: python conformance-kit/validators/bootstrap_validate.py examples/loyalty-agent/bootstrap.yaml
+      - run: python tools/cli/spec444.py validate examples/loyalty-agent/bootstrap.yaml
+      - run: python tools/cli/spec444.py scaffold examples/loyalty-agent/bootstrap.yaml --out /tmp/scaffold-smoke
       - run: pytest conformance-kit/test-suites -q
+  cross-triad:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Agentic-Operation/agent-conformance
+          path: sibling/conformance
+      - uses: actions/checkout@v4
+        with:
+          repository: Agentic-Operation/agent-profile-management
+          path: sibling/profile
+      - uses: actions/checkout@v4
+        with:
+          repository: Agentic-Operation/agent-discovery-card
+          path: sibling/card
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install pyyaml
+      - run: export SPEC443_SCHEMAS=$PWD/sibling/profile/schemas SPEC444_SCHEMAS=$PWD/schemas SPEC445_SCHEMAS=$PWD/sibling/card/schemas
+      - run: if [ -f sibling/conformance/validators/crosscheck.py ]; then python sibling/conformance/validators/crosscheck.py --profile sibling/profile/examples/loyalty-agent/profile.json --bootstrap examples/loyalty-agent/bootstrap.yaml --card sibling/card/examples/loyalty-agent/card.json; else python conformance-kit/validators/crosscheck.py --profile sibling/profile/examples/loyalty-agent/profile.json --bootstrap examples/loyalty-agent/bootstrap.yaml --card sibling/card/examples/loyalty-agent/card.json; fi

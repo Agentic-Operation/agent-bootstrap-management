@@ -22,3 +22,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 - `conformance-kit/`: `bootstrap_validate.py`, `crosscheck.py`, pytest suite, CI gate; active
   `.github/workflows/ci-gate.yml`.
 - `api/openapi/bootstrap-api.yaml` (validate / scaffold / deploy / inventory / rollback).
+
+### Added (Phase 2)
+
+- `integrations/model-authority/model_authority.py`: reference Model Management Authority implementing
+  `spec/annexes/model-authority-record.schema.json` — register/resolve (pinned id+version+CID)/deprecate
+  with re-certification webhooks (C19).
+- `tools/cli/spec444.py`: validate / scaffold / deploy (env override merge + model resolution + hooks +
+  inventory + registry env-instance update) / inventory / rollback.
+- CI: ci-gate runs validate + scaffold smoke; new `cross-triad` job runs crosscheck.py across siblings.
+
+### Changed (Phase 2 reshape)
+
+- `integrations/model-authority/` moved to **model-authority** repo (schema annex stays canonical in
+  `spec/annexes/model-authority-record.schema.json`); `spec444 deploy/inventory` delegate to
+  **agent-rollout-controller** service.
+- Comms pack moved to **agent-standard-docs**; `docs/communication/` is now a pointer.
+- `cross-triad` CI job uses **agent-conformance** validators; README/REFERENCES link all service repos.
