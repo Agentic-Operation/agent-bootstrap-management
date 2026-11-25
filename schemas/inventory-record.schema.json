@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://specs.agentic-operation.dev/spec-444/inventory-record.schema.json",
+  "title": "Spec-444 [EXT] per-environment deployment & inventory record (inventory[] entry)",
+  "type": "object",
+  "required": ["environment", "instance_id", "agent_id", "agent_uuid", "deployed_version", "artifact_cid", "rollout", "health", "owner"],
+  "properties": {
+    "environment": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
+    "instance_id": {"type": "string"},
+    "agent_id": {"type": "string"},
+    "agent_uuid": {"type": "string", "format": "uuid"},
+    "deployed_version": {"type": "string"},
+    "artifact_cid": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "bootstrap_cid": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "card_cid": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "model_versions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["model_id", "version", "cid"],
+        "properties": {
+          "model_id": {"type": "string"},
+          "version": {"type": "string"},
+          "cid": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+        }
+      }
+    },
+    "rollout": {
+      "type": "object",
+      "required": ["strategy", "state"],
+      "properties": {
+        "strategy": {"enum": ["canary", "blue-green", "rolling"]},
+        "state": {"enum": ["active", "canary", "draining", "rolled-back"]},
+        "previous_version": {"type": "string"}
+      }
+    },
+    "health": {
+      "type": "object",
+      "required": ["status", "last_check"],
+      "properties": {
+        "status": {"enum": ["healthy", "degraded", "unhealthy"]},
+        "last_check": {"type": "string", "format": "date-time"}
+      }
+    },
+    "metrics_vs_targets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["metric", "target", "actual"],
+        "properties": {
+          "metric": {"type": "string"},
+          "target": {"type": "string"},
+          "actual": {}
+        }
+      }
+    },
+    "autonomy_case_ref": {"type": "string", "format": "uri"},
+    "last_deployed": {"type": "string", "format": "date-time"},
+    "owner": {"type": "string"}
+  }
+}

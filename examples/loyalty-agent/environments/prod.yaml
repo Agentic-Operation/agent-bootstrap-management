@@ -1,0 +1,12 @@
+# Spec-444 [EXT §6.2] standalone per-environment override for prod.
+# Merge over bootstrap.yaml at deploy time: spec444 deploy --env prod --overrides environments/prod.yaml
+name: prod
+target_platform: kubernetes
+resource_constraints: {memory_request: "4Gi", memory_limit: "8Gi", cpu_request: "2000m", gpu_optional: true}
+scaling: {min_replicas: 2, max_replicas: 10, metric: request_rate, target_utilization: 70}
+endpoints:
+  base_url: https://agents.example.com
+  invoke_path: /agents/loyalty-management-agent-v1/invoke
+  well_known_path: /.well-known/woa.json
+secrets_management: {backend: hashicorp_vault, kv_path: secret/data/agents/loyalty-management-agent/prod, refresh_interval: 1h}
+feature_flags: {adaptive_layer: true}
