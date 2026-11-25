@@ -100,6 +100,23 @@ def resolve_models(bp, authority):
 
 
 def cmd_deploy(a):
+    ctrl = getattr(a, "controller", None) or "http://localhost:8091"
+    bp = load_bootstrap(a.bootstrap)
+    req = urllib.request.Request(f"{ctrl}/v1/bootstraps", data=json.dumps(bp).encode(),
+                                 headers={"Content-Type": "application/json"})
+    urllib.request.urlopen(req)
+    req = urllib.request.Request(f"{ctrl}/v1/bootstraps/{bp['id']}/deploy",
+                                 data=json.dumps({"environment": a.env, "rollout_strategy": a.strategy}).encode(),
+                                 headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        print(urllib.request.urlopen(req).read().decode())
+        return 0
+    except urllib.error.HTTPError as e:
+        print(e.read().decode(), file=sys.stderr)
+        return 1
+
+
+def _cmd_deploy_local(a):
     bp = load_bootstrap(a.bootstrap)
     r = subprocess.run([sys.executable, str(VALIDATOR), a.bootstrap])
     if r.returncode != 0:
@@ -129,9 +146,15 @@ def cmd_deploy(a):
 
 
 def cmd_inventory(a):
+    ctrl = getattr(a, "controller", None) or "http://localhost:8091"
     bp = load_bootstrap(a.bootstrap)
-    print(json.dumps(bp.get("inventory", []), indent=2))
-    return 0
+    try:
+        with urllib.request.urlopen(f"{ctrl}/v1/bootstraps/{bp['id']}/inventory") as r:
+            print(r.read().decode())
+        return 0
+    except Exception:
+        print(json.dumps(bp.get("inventory", []), indent=2))
+        return 0
 
 
 def cmd_rollback(a):
@@ -152,7 +175,7 @@ def main():
     p = sub.add_parser("scaffold"); p.add_argument("bootstrap"); p.add_argument("--out", required=True)
     p = sub.add_parser("deploy"); p.add_argument("bootstrap"); p.add_argument("--env", required=True)
     p.add_argument("--strategy", default="rolling", choices=["canary", "blue-green", "rolling"])
-    p.add_argument("--registry", default=None); p.add_argument("--authority", default=None)
+    p.add_argument("--registry", default=None); p.add_argument("--authority", default=None); p.add_argument("--controller", default=None)
     p = sub.add_parser("inventory"); p.add_argument("bootstrap")
     p = sub.add_parser("rollback"); p.add_argument("bootstrap"); p.add_argument("--env", required=True)
     a = ap.parse_args()

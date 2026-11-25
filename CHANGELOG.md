@@ -31,3 +31,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follo
 - `tools/cli/spec444.py`: validate / scaffold / deploy (env override merge + model resolution + hooks +
   inventory + registry env-instance update) / inventory / rollback.
 - CI: ci-gate runs validate + scaffold smoke; new `cross-triad` job runs crosscheck.py across siblings.
+
+### Changed (Phase 2 reshape)
+
+- `integrations/model-authority/` moved to **model-authority** repo (schema annex stays canonical in
+  `spec/annexes/model-authority-record.schema.json`); `spec444 deploy/inventory` delegate to
+  **agent-rollout-controller** service.
+- Comms pack moved to **agent-standard-docs**; `docs/communication/` is now a pointer.
+- `cross-triad` CI job uses **agent-conformance** validators; README/REFERENCES link all service repos.

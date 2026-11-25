@@ -35,3 +35,15 @@ Canonical copy: `agent-profile-management`. Mirrored in `agent-bootstrap-managem
 
 Where documents differ: **IG1412** for autonomy framework and agent components; **A2A** for base card
 fields; the owning **Spec-44X** for its extensions; **TM Forum** originals otherwise.
+
+## Runtime services (this org)
+
+| Service | Repo |
+|---|---|
+| Agent Card Registry | [Agent-Registry](https://github.com/Agentic-Operation/Agent-Registry) |
+| Model Management Authority (this repo's schema annex) | [model-authority](https://github.com/Agentic-Operation/model-authority) |
+| Rollout controller (this repo's bootstrap API deploy/inventory/rollback) | [agent-rollout-controller](https://github.com/Agentic-Operation/agent-rollout-controller) |
+| Orchestrator (swarm/hierarchy) | [agent-orchestrator](https://github.com/Agentic-Operation/agent-orchestrator) |
+| Tool & MCP manager (this repo's §3) | [tool-mcp-manager](https://github.com/Agentic-Operation/tool-mcp-manager) |
+| Conformance kit | [agent-conformance](https://github.com/Agentic-Operation/agent-conformance) |
+| Published docs / comms pack (canonical) | [agent-standard-docs](https://github.com/Agentic-Operation/agent-standard-docs) |
