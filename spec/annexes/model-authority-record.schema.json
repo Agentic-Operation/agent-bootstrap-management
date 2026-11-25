@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://specs.agentic-operation.dev/spec-444/model-authority-record.schema.json",
+  "title": "Model Management Authority record (normative contract for model_ref resolution)",
+  "type": "object",
+  "required": ["model_id", "uuid", "version", "cid", "integrity_wrapper", "provenance", "eval_evidence", "policy"],
+  "properties": {
+    "model_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-_]*$"},
+    "uuid": {"type": "string", "format": "uuid"},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[a-z0-9.]+)?$"},
+    "cid": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "integrity_wrapper": {
+      "type": "object",
+      "required": ["signature_type", "issuer", "transparency_log"],
+      "properties": {
+        "signature_type": {"type": "string"},
+        "issuer": {"type": "string", "format": "uri"},
+        "transparency_log": {"type": "string", "format": "uri"}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["training_data", "pipeline"],
+      "properties": {
+        "training_data": {"type": "string"},
+        "pipeline": {"type": "string"},
+        "base_model_lineage": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "eval_evidence": {
+      "type": "object",
+      "required": ["benchmarks"],
+      "properties": {
+        "benchmarks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "version", "score"],
+            "properties": {
+              "name": {"type": "string", "examples": ["tau2-Bench retail subset", "BIRD-SQL"]},
+              "version": {"type": "string"},
+              "score": {"type": "number"}
+            }
+          }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "required": ["license", "risk_class", "allowed_use", "approved_environments"],
+      "properties": {
+        "license": {"type": "string", "examples": ["Apache-2.0"]},
+        "risk_class": {"enum": ["low", "medium", "high"]},
+        "allowed_use": {"type": "string"},
+        "deontic_tokens": {"type": "array", "items": {"type": "string"}},
+        "approved_environments": {"type": "array", "items": {"type": "string"}, "examples": [["dev", "stage", "prod"]]}
+      }
+    },
+    "status": {"enum": ["draft", "approved", "deprecated"]},
+    "last_updated": {"type": "string", "format": "date-time"}
+  }
+}

@@ -1,0 +1,177 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://specs.agentic-operation.dev/spec-444/bootstrap.schema.json",
+  "title": "Spec-444 AI Agent Bootstrap Specification",
+  "type": "object",
+  "required": ["bootstrap_profile"],
+  "properties": {
+    "bootstrap_profile": {
+      "type": "object",
+      "required": ["id", "uuid", "version", "provider", "generation", "skill_bindings", "tool_bindings", "security_config", "validation", "lifecycle_hooks"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-_]*(-bootstrap)?$"},
+        "uuid": {"type": "string", "format": "uuid"},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[a-z0-9.]+)?$"},
+        "provider": {"type": "string", "minLength": 1},
+        "content_identifier_cid": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        "spec443_profile_ref": {"type": "string"},
+        "spec445_agent_card_ref": {"type": "string"},
+        "generation": {
+          "type": "object",
+          "required": ["target_framework", "language", "output_structure", "include_tests", "generate_dockerfile", "ci_cd_template"],
+          "properties": {
+            "target_framework": {"enum": ["open-agent-spec", "wayflow", "langgraph", "crewai", "autogen", "custom"]},
+            "framework_version_constraint": {"type": "string"},
+            "language": {"enum": ["python", "typescript", "go", "java", "rust"]},
+            "output_structure": {"enum": ["modular", "monolithic", "microservice"]},
+            "include_tests": {"type": "boolean"},
+            "generate_dockerfile": {"type": "boolean"},
+            "ci_cd_template": {"enum": ["github-actions", "gitlab-ci", "jenkins", "none"]},
+            "license_header": {"type": "string"}
+          }
+        },
+        "skill_bindings": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["skill_id", "bound_core_task", "source_taxonomy", "implementation"],
+            "properties": {
+              "skill_id": {"type": "string", "pattern": "^(TMF-OASF [0-9]+|TMF-GB1033 F-[0-9]+|EXTENSION-[A-Za-z0-9-]+)$"},
+              "bound_core_task": {"type": "string"},
+              "source_taxonomy": {"type": "string"},
+              "description": {"type": "string"},
+              "implementation": {
+                "type": "object",
+                "required": ["adapter"],
+                "properties": {
+                  "adapter": {"enum": ["huggingface_pipeline", "mlflow_model", "langgraph_subgraph", "wayflow_node", "python_function", "custom"]},
+                  "model_ref": {"type": "string"},
+                  "entrypoint": {"type": "string"},
+                  "fallback_behavior": {"enum": ["cache_or_default", "retry_with_backoff", "fail_closed", "custom"]}
+                }
+              }
+            }
+          }
+        },
+        "model_bindings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["model_id", "version", "cid", "authority_endpoint", "risk_class"],
+            "properties": {
+              "model_id": {"type": "string"},
+              "version": {"type": "string"},
+              "cid": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+              "authority_endpoint": {"type": "string", "format": "uri"},
+              "eval_evidence_ref": {"type": "string", "format": "uri"},
+              "risk_class": {"enum": ["low", "medium", "high"]}
+            }
+          }
+        },
+        "tool_bindings": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["type"],
+            "properties": {
+              "type": {"enum": ["mcp_tool", "mcp_resource", "rest_api", "function"]},
+              "mcp_server": {"type": "string"},
+              "function_name": {"type": "string"},
+              "resource_path": {"type": "string"},
+              "auth_scope": {"type": "string"}
+            }
+          }
+        },
+        "mcp_servers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "transport", "env_secrets"],
+            "properties": {
+              "name": {"type": "string"},
+              "transport": {"enum": ["stdio", "sse", "websocket", "http"]},
+              "command": {"type": "string"},
+              "args": {"type": "array", "items": {"type": "string"}},
+              "env_secrets": {"type": "array", "items": {"type": "string"}},
+              "health_check": {"type": "object", "properties": {"endpoint": {"type": "string"}, "timeout": {"type": "string"}}}
+            }
+          }
+        },
+        "protocol_handlers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["handler_module", "config"],
+            "properties": {"handler_module": {"type": "string"}, "config": {"type": "object"}}
+          }
+        },
+        "security_config": {
+          "type": "object",
+          "required": ["auth", "secrets_management", "sigstore_integration"],
+          "properties": {
+            "auth": {
+              "type": "object",
+              "required": ["provider", "client_id_env", "token_validation", "scopes_required"],
+              "properties": {
+                "provider": {"enum": ["oauth2_oidc", "keycloak", "mtls", "api_key", "custom"]},
+                "issuer": {"type": "string", "format": "uri"},
+                "client_id_env": {"type": "string"},
+                "token_validation": {"enum": ["jwks_uri", "introspection", "static_jwk"]},
+                "scopes_required": {"type": "array", "items": {"type": "string"}}
+              }
+            },
+            "secrets_management": {
+              "type": "object",
+              "required": ["backend"],
+              "properties": {
+                "backend": {"enum": ["aws_secrets", "gcp_secret_manager", "hashicorp_vault", "kubernetes_secrets", "env_only"]},
+                "kv_path": {"type": "string"},
+                "refresh_interval": {"type": "string"}
+              }
+            },
+            "sigstore_integration": {
+              "type": "object",
+              "required": ["enabled"],
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "issuer": {"type": "string", "format": "uri"},
+                "rekor_url": {"type": "string", "format": "uri"},
+                "sign_artifacts": {"type": "array", "items": {"type": "string"}}
+              }
+            }
+          }
+        },
+        "deployment": {"type": "object"},
+        "environments": {
+          "type": "array",
+          "items": {"$ref": "environment-override.schema.json"}
+        },
+        "inventory": {
+          "type": "array",
+          "items": {"$ref": "inventory-record.schema.json"}
+        },
+        "validation": {
+          "type": "object",
+          "required": ["spec_schema_uri", "strict_mode", "pre_commit_hooks", "failure_policy"],
+          "properties": {
+            "spec_schema_uri": {"type": "string", "format": "uri"},
+            "strict_mode": {"type": "boolean"},
+            "pre_commit_hooks": {"type": "array", "items": {"type": "string"}, "minItems": 2},
+            "failure_policy": {"enum": ["fail_commit", "warn_only", "log_only"]}
+          }
+        },
+        "testing": {"type": "object"},
+        "lifecycle_hooks": {
+          "type": "object",
+          "required": ["pre_deploy"],
+          "properties": {
+            "pre_bootstrap": {"type": "array", "items": {"type": "object"}},
+            "post_bootstrap": {"type": "array", "items": {"type": "object"}},
+            "pre_deploy": {"type": "array", "items": {"type": "object", "required": ["script", "fail_on_error"], "properties": {"script": {"type": "string"}, "fail_on_error": {"type": "boolean"}, "requires_auth": {"type": "boolean"}}}}
+          }
+        }
+      }
+    }
+  }
+}
