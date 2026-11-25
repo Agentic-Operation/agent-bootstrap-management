@@ -1,4 +1,4 @@
-# agent-bootstrap-management — Spec-444: AI Agent Bootstrap
+# Agent Bootstrap Management (Spec-444): An AI Agent Bootstrap Spec
 
 **Spec-444** is the *onboard* contract of the agent triad: a declarative YAML (`bootstrap_profile` root
 key) that, when processed by a runtime scaffolder, instantiates an AI agent as a runnable component —
