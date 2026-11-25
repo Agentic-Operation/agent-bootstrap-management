@@ -9,7 +9,7 @@ Spec-444 extensions over TM Forum **TMF444 v1.0.0** (alpha; delta in `spec/annex
 per-environment `environments[]` overrides, `model_bindings` resolved through the Model Management
 Authority, and the **per-environment deployment/inventory record** (which agent version is live where).
 
-- **Status:** Draft (Phase 0 — communication package). **License:** Apache-2.0
+- **Status:** Draft — Phase 0 comms pack pending; **Phase 1**: normative `spec/SPEC-444.md` v1.0.0-alpha on `vibe/spec-draft-5a1ad6`. **License:** Apache-2.0
 
 ## The triad (sibling repos)
 

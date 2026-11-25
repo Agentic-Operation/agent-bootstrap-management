@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://specs.agentic-operation.dev/spec-444/environment-override.schema.json",
+  "title": "Spec-444 [EXT] per-environment override (environments[] entry)",
+  "type": "object",
+  "required": ["name"],
+  "properties": {
+    "name": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$", "examples": ["dev", "stage", "prod"]},
+    "target_platform": {"enum": ["kubernetes", "serverless", "vm_bare", "container", "local"]},
+    "resource_constraints": {
+      "type": "object",
+      "properties": {
+        "memory_request": {"type": "string"},
+        "memory_limit": {"type": "string"},
+        "cpu_request": {"type": "string"},
+        "gpu_optional": {"type": "boolean"}
+      }
+    },
+    "scaling": {
+      "type": "object",
+      "properties": {
+        "min_replicas": {"type": "integer", "minimum": 0},
+        "max_replicas": {"type": "integer", "minimum": 1},
+        "metric": {"enum": ["cpu_utilization", "request_rate", "queue_depth", "custom"]},
+        "target_utilization": {"type": "integer", "minimum": 1, "maximum": 100}
+      }
+    },
+    "endpoints": {
+      "type": "object",
+      "properties": {
+        "base_url": {"type": "string", "format": "uri"},
+        "invoke_path": {"type": "string"},
+        "well_known_path": {"type": "string"}
+      }
+    },
+    "secrets_management": {
+      "type": "object",
+      "properties": {
+        "backend": {"type": "string"},
+        "kv_path": {"type": "string"},
+        "refresh_interval": {"type": "string"}
+      }
+    },
+    "feature_flags": {"type": "object", "additionalProperties": {"type": ["boolean", "string", "number"]}}
+  }
+}

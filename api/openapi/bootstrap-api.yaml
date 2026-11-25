@@ -1,0 +1,65 @@
+openapi: 3.1.0
+info:
+  title: Spec-444 Bootstrap Validation, Scaffold & Rollout API
+  version: 0.1.0
+  description: Validate Spec-444 bootstrap YAML, scaffold runnable agents, and deploy per environment
+    using environments[] overrides and the inventory record.
+servers:
+  - url: https://api.agentic-operation.dev/v1
+paths:
+  /bootstraps/validate:
+    post:
+      summary: Validate a bootstrap YAML (schema + structural rules + triad cross-check)
+      requestBody:
+        required: true
+        content:
+          application/yaml:
+            schema: {type: string}
+      responses:
+        '200': {description: Valid}
+        '422': {description: Violations listed}
+  /bootstraps/{id}/scaffold:
+    post:
+      summary: Scaffold a runnable repo (code, tests, Dockerfile, CI) from the bootstrap
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: Scaffold artifact CID}, '422': {description: Validation failed}}
+  /bootstraps/{id}/deploy:
+    post:
+      summary: Deploy to an environment (applies environments[] override, runs lifecycle hooks, updates inventory)
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [environment]
+              properties:
+                environment: {type: string, examples: [dev, stage, prod]}
+                rollout_strategy: {enum: [canary, blue-green, rolling]}
+      responses: {'202': {description: Deployment started; inventory entry updated}, '422': {description: Validation/prerequisite failed}}
+  /bootstraps/{id}/inventory:
+    get:
+      summary: Per-environment deployment/inventory record (which version is live where)
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses: {'200': {description: 'Inventory entries (Spec-444 §6.3 [EXT])'}}
+  /bootstraps/{id}/inventory/{environment}:
+    get:
+      summary: Inventory entry for one environment
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: environment, in: path, required: true, schema: {type: string}}
+      responses: {'200': {description: Inventory entry}, '404': {description: Not deployed there}}
+  /bootstraps/{id}/rollback:
+    post:
+      summary: Roll back an environment to previous_version (recorded in inventory rollout)
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [environment]
+              properties: {environment: {type: string}}
+      responses: {'202': {description: Rollback started}}

@@ -1,0 +1,205 @@
+# Spec-444 worked example — Loyalty Management Agent bootstrap (base, environment-agnostic).
+# Companions: Spec-443 profile (agent-profile-management/examples/loyalty-agent/profile.json)
+#             Spec-445 card   (agent-discovery-card/examples/loyalty-agent/card.json)
+# Identity fields MUST match both (cross-check C1-C6).
+bootstrap_profile:
+  id: loyalty-management-agent-v1-bootstrap
+  name: Loyalty Management Agent Bootstrap
+  uuid: 9e3b2f5d-4a8c-4f6e-8b1d-7c9a2e5f3b6d
+  version: 1.0.0-stable
+  provider: AI4X Contact Center Project Team
+  content_identifier_cid: sha256:2c48cbb73b1adaee3dc7a181dfdb54d5faaabe8f1310ba09b20720a30c1c0b3d
+  integrity_wrapper:
+    signature_type: Sigstore-OIDC
+    issuer: https://github.com/login/oauth
+    transparency_log: https://rekor.sigstore.dev
+  spec443_profile_ref: https://github.com/Agentic-Operation/agent-profile-management/blob/main/examples/loyalty-agent/profile.json
+  spec445_agent_card_ref: https://github.com/Agentic-Operation/agent-discovery-card/blob/main/examples/loyalty-agent/card.json
+
+  generation:
+    target_framework: wayflow            # cross-check: Spec-443 §3.4 execution_engine = WayFlow
+    framework_version_constraint: ">=1.0.0,<2.0.0"
+    language: python
+    output_structure: modular
+    include_tests: true
+    generate_dockerfile: true
+    ci_cd_template: github-actions
+    license_header: Apache-2.0
+
+  skill_bindings:                        # cross-check C7/C8: spec-443 §4.2 / §4.1
+    - skill_id: "TMF-OASF 3015"
+      bound_core_task: "Member lifecycle orchestration"
+      source_taxonomy: "OASF Skill Taxonomy"
+      description: "Progressive enrolment with consent capture"
+      implementation: {adapter: python_function, entrypoint: "src.skills.enrolment::enrol_member", fallback_behavior: cache_or_default}
+    - skill_id: "TMF-OASF 3016"
+      bound_core_task: "Member lifecycle orchestration"
+      source_taxonomy: "OASF Skill Taxonomy"
+      implementation: {adapter: wayflow_node, entrypoint: "src.skills.tier::progress_tier"}
+    - skill_id: "TMF-GB1033 F-1842"
+      bound_core_task: "Real-time redemption validation"
+      source_taxonomy: "GB1033 Functional Framework"
+      implementation: {adapter: wayflow_node, entrypoint: "src.skills.redemption::validate_multi_currency", fallback_behavior: cache_or_default}
+    - skill_id: "TMF-OASF 3020"
+      bound_core_task: "Tier management and status optimization"
+      source_taxonomy: "OASF Skill Taxonomy"
+      implementation: {adapter: python_function, entrypoint: "src.skills.tier::grace_period"}
+    - skill_id: "TMF-OASF 3021"
+      bound_core_task: "Tier management and status optimization"
+      source_taxonomy: "OASF Skill Taxonomy"
+      implementation: {adapter: python_function, entrypoint: "src.skills.tier::fast_track"}
+    - skill_id: "TMF-OASF 2046"
+      bound_core_task: "Churn risk intervention"
+      source_taxonomy: "OASF Skill Taxonomy"
+      implementation: {adapter: mlflow_model, model_ref: "churn-scorer@2.3.1", fallback_behavior: fail_closed}
+    - skill_id: "TMF-OASF 2051"
+      bound_core_task: "Churn risk intervention"
+      source_taxonomy: "OASF Skill Taxonomy"
+      implementation: {adapter: mlflow_model, model_ref: "offer-selector@1.4.2", fallback_behavior: cache_or_default}
+
+  model_bindings:                        # [EXT §2.2] cross-check C19 with profile §9.2 + card modelGovernance
+    - model_id: churn-scorer
+      version: "2.3.1"
+      cid: sha256:b4d8699cedd22d854f2c2b1858074a4984a6658edf493415dda887c8a97fb1a3
+      authority_endpoint: https://models.example.com/v1/models
+      eval_evidence_ref: https://models.example.com/v1/models/churn-scorer/2.3.1/eval
+      risk_class: medium
+    - model_id: offer-selector
+      version: "1.4.2"
+      cid: sha256:df383e32cfbc3ad56f9252300f8d9aefe0d204401b4a4b730444406c1b21a983
+      authority_endpoint: https://models.example.com/v1/models
+      risk_class: low
+
+  tool_bindings:                         # cross-check C9: spec-443 §5.2 systems
+    "E-commerce / POS": {type: mcp_tool, mcp_server: pos-and-ecom, function_name: submit_redemption_event, auth_scope: "pos:write"}
+    "Marketing Execution (ESP)": {type: mcp_tool, mcp_server: marketing-esp, function_name: queue_campaign_send, auth_scope: "ads:write"}
+    "Customer Service (CRM)": {type: rest_api, function_name: fetch_member_context, auth_scope: "crm:read"}
+
+  mcp_servers:
+    - name: pos-and-ecom
+      transport: stdio
+      command: mcp-pos-server
+      args: ["--config", "${CONFIG_PATH}/pos.yaml"]
+      env_secrets: ["POS_API_KEY"]       # names only; values from secrets manager at deploy time
+      health_check: {endpoint: "/health", timeout: "10s"}
+    - name: marketing-esp
+      transport: stdio
+      command: mcp-esp-server
+      args: ["--config", "${CONFIG_PATH}/esp.yaml"]
+      env_secrets: ["ESP_API_KEY", "ADS_ACCESS_TOKEN"]
+      health_check: {endpoint: "/health", timeout: "10s"}
+
+  protocol_handlers:                     # cross-check C10: spec-443 §6.1 / §7.2
+    a2a_jsonrpc:
+      handler_module: "tmforum.protocols.a2a.JSONRPC2Handler"
+      config: {timeout: "30s", retry_policy: exponential_backoff}
+
+  security_config:
+    auth:
+      provider: keycloak                 # cross-check C13: spec-443 §8.3 OAuth 2.0 / OIDC
+      issuer: "${AUTH_ISSUER_URL}"
+      client_id_env: AGENT_CLIENT_ID
+      token_validation: jwks_uri
+      scopes_required: ["agent:execute", "pos:write", "ads:write", "crm:read"]
+    secrets_management:
+      backend: hashicorp_vault
+      kv_path: secret/data/agents/loyalty-management-agent   # base path; per-env override in environments[]
+      refresh_interval: 1h
+    sigstore_integration:                  # cross-check C6: integrity_wrapper
+      enabled: true
+      issuer: https://github.com/login/oauth
+      rekor_url: https://rekor.sigstore.dev
+      sign_artifacts: ["docker_image", "wheel_package"]
+
+  deployment:                            # base: environment-agnostic (never "local" in VC)
+    target_platform: kubernetes
+    resource_constraints: {memory_request: "2Gi", memory_limit: "4Gi", cpu_request: "1000m", gpu_optional: true}
+    scaling: {min_replicas: 1, max_replicas: 3, metric: cpu_utilization, target_utilization: 70}  # L3: keep surfaces warm
+    observability:
+      logging: {level: INFO, format: json, destination: stdout}
+      metrics: {exporter: prometheus, endpoint: "/metrics"}
+      tracing: {provider: otel, sampler: probabilistic, sample_ratio: 0.1}
+
+  environments:                          # [EXT §6.2] per-environment overrides; cross-check C20
+    - name: dev
+      target_platform: container
+      scaling: {min_replicas: 0, max_replicas: 1, metric: request_rate}
+      endpoints: {base_url: "https://agents-dev.example.com"}
+      secrets_management: {kv_path: secret/data/agents/loyalty-management-agent/dev}
+      feature_flags: {adaptive_layer: false}
+    - name: stage
+      target_platform: kubernetes
+      resource_constraints: {memory_request: "2Gi", memory_limit: "4Gi", cpu_request: "1000m"}
+      scaling: {min_replicas: 1, max_replicas: 3, metric: request_rate, target_utilization: 70}
+      endpoints: {base_url: "https://agents-stage.example.com"}
+      secrets_management: {kv_path: secret/data/agents/loyalty-management-agent/stage}
+    - name: prod
+      target_platform: kubernetes
+      resource_constraints: {memory_request: "4Gi", memory_limit: "8Gi", cpu_request: "2000m"}
+      scaling: {min_replicas: 2, max_replicas: 10, metric: request_rate, target_utilization: 70}
+      endpoints: {base_url: "https://agents.example.com", invoke_path: "/agents/loyalty-management-agent-v1/invoke", well_known_path: "/.well-known/woa.json"}
+      secrets_management: {kv_path: secret/data/agents/loyalty-management-agent/prod}
+      feature_flags: {adaptive_layer: true}
+
+  inventory:                             # [EXT §6.3] per-environment deployment/inventory record
+    - environment: dev
+      instance_id: lma-dev-5c1a2b
+      agent_id: loyalty-management-agent-v1
+      agent_uuid: 9e3b2f5d-4a8c-4f6e-8b1d-7c9a2e5f3b6d
+      deployed_version: 1.0.0-stable
+      artifact_cid: sha256:aa99b22f0bca3be40cc24507c20ae946246adeea719aa0db4e33b92eabddac91
+      bootstrap_cid: sha256:2c48cbb73b1adaee3dc7a181dfdb54d5faaabe8f1310ba09b20720a30c1c0b3d
+      card_cid: sha256:ae15eaf273fb244103c0411d4470d31677507f415cb560a87607dca4e1b51a44
+      model_versions:
+        - {model_id: churn-scorer, version: "2.3.1", cid: "sha256:b4d8699cedd22d854f2c2b1858074a4984a6658edf493415dda887c8a97fb1a3"}
+      rollout: {strategy: rolling, state: active}
+      health: {status: healthy, last_check: "2026-11-25T00:00:00Z"}
+      metrics_vs_targets:
+        - {metric: redemption_validation_p95_latency_ms, target: "<= 500", actual: 388}
+      autonomy_case_ref: https://grc.example.com/autonomy-cases/loyalty-management-agent-v1/dev
+      last_deployed: "2026-11-24T09:30:00Z"
+      owner: loyalty-platform-team
+    - environment: prod
+      instance_id: lma-prod-7f3c9d
+      agent_id: loyalty-management-agent-v1
+      agent_uuid: 9e3b2f5d-4a8c-4f6e-8b1d-7c9a2e5f3b6d
+      deployed_version: 1.0.0-stable
+      artifact_cid: sha256:084eaf70342aa0978dc0adcee08abc80f3bc6ff10272eedcdf543f25714a1c13
+      bootstrap_cid: sha256:2c48cbb73b1adaee3dc7a181dfdb54d5faaabe8f1310ba09b20720a30c1c0b3d
+      card_cid: sha256:ae15eaf273fb244103c0411d4470d31677507f415cb560a87607dca4e1b51a44
+      model_versions:
+        - {model_id: churn-scorer, version: "2.3.1", cid: "sha256:b4d8699cedd22d854f2c2b1858074a4984a6658edf493415dda887c8a97fb1a3"}
+        - {model_id: offer-selector, version: "1.4.2", cid: "sha256:df383e32cfbc3ad56f9252300f8d9aefe0d204401b4a4b730444406c1b21a983"}
+      rollout: {strategy: canary, state: active, previous_version: "0.9.2"}
+      health: {status: healthy, last_check: "2026-11-25T00:00:00Z"}
+      metrics_vs_targets:
+        - {metric: redemption_validation_p95_latency_ms, target: "<= 500", actual: 412}
+        - {metric: churn_scoring_auc, target: ">= 0.85", actual: 0.86}
+      autonomy_case_ref: https://grc.example.com/autonomy-cases/loyalty-management-agent-v1/prod
+      last_deployed: "2026-11-20T10:00:00Z"
+      owner: loyalty-platform-team
+
+  validation:
+    spec_schema_uri: https://specs.agentic-operation.dev/spec-444/bootstrap.schema.json
+    strict_mode: true
+    failure_policy: fail_commit                 # production-bound MUST be fail_commit
+    pre_commit_hooks: [yamllint, check-spec444-schema, check-triad-crosscheck, gitleaks]
+
+  testing:
+    unit_test_framework: pytest
+    integration_test_config:
+      test_data_path: tests/data/loyalty/
+      mock_services: [pos_api, crm_api, marketing_esp]
+    acceptance_criteria:                       # cross-check C16: spec-443 §9
+      - {metric: redemption_validation_accuracy, threshold: ">= 0.995"}
+      - {metric: redemption_validation_p95_latency_ms, threshold: "<= 500"}
+      - {metric: churn_scoring_auc, threshold: ">= 0.85"}
+      - {metric: retention_efficacy_improvement, threshold: ">= 0.15"}
+
+  lifecycle_hooks:
+    pre_bootstrap:
+      - {script: scripts/validate-secrets.sh, fail_on_error: true}
+    post_bootstrap:                            # cross-check C17: required at L3+
+      - {script: scripts/generate-autonomy-case.sh, artifact_output: dist/autonomy-case-v1.pdf, fail_on_error: true}
+    pre_deploy:                                # [EXT] runs per environment; signs with that env's override applied
+      - {script: scripts/sign-artifacts.sh, requires_auth: true, fail_on_error: true}
